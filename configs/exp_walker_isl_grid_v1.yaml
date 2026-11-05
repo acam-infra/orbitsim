@@ -1,0 +1,8 @@
+# Runnable experiment: Walker-delta shell + StarPerf-style +Grid ISL topology.
+name: exp_walker_isl_grid_v1
+base: ../input/scenarios/base_walker_starlink_like.yaml
+
+analysis:
+  - kind: isl_topology
+    mode: positive_grid
+    max_range_km: 6000

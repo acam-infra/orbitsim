@@ -1,0 +1,7 @@
+# Runnable experiment: Walker-delta shell with ring (intra-orbit only) ISLs.
+name: exp_walker_isl_ring_v1
+base: ../input/scenarios/base_walker_starlink_like.yaml
+
+analysis:
+  - kind: isl_topology
+    mode: ring

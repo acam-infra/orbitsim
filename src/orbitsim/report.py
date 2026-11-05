@@ -17,6 +17,7 @@ import math
 
 from . import orbit_sun, visibility
 from .constellation import Constellation
+from . import isl as isl_mod
 
 THREE_SEASON_DECLS = (0.0, orbit_sun.OBLIQUITY_DEG, -orbit_sun.OBLIQUITY_DEG)
 
@@ -31,12 +32,62 @@ def run_analysis(spec: dict, const: Constellation) -> list[str]:
     lines: list[str] = []
 
     if kind == "constellation":
-        lines.append(f"[constellation] kind={const.kind} orbits={const.n_orbits} sats={const.n_sats}")
-        for o in const.orbits[:8]:
-            extra = f" ltan={o.ltan_h}" if o.ltan_h is not None else (f" raan={o.raan_deg:.0f}" if o.raan_deg is not None else "")
-            lines.append(f"  {o.name:>10}: alt={o.altitude_m/1e3:.0f} km inc={o.inclination_deg:.2f} deg T={o.period_s/60:.1f} min{extra}")
-        if const.n_orbits > 8:
-            lines.append(f"  ... ({const.n_orbits - 8} more orbits)")
+        lines.append(
+            f"[constellation] shells={const.n_shells} orbits={const.n_orbits} sats={const.n_sats}")
+        for sh in const.shells:
+            lines.append(f"  shell {sh.name!r}: kind={sh.kind} orbits={sh.n_orbits} sats={sh.n_sats}")
+            for o in sh.orbits[:4]:
+                extra = (f" ltan={o.ltan_h}" if o.ltan_h is not None
+                         else (f" raan={o.raan_deg:.0f}" if o.raan_deg is not None else ""))
+                lines.append(
+                    f"    {o.name:>16}: alt={o.altitude_m/1e3:.0f} km"
+                    f" inc={o.inclination_deg:.2f} deg T={o.period_s/60:.1f} min{extra}")
+            if sh.n_orbits > 4:
+                lines.append(f"    ... ({sh.n_orbits - 4} more orbits)")
+        return lines
+
+    if kind == "isl_topology":
+        # Accept either the flat form (mode: positive_grid) or the paired form
+        # (intra_shell: {...} / inter_shell: {...}).
+        if "intra_shell" in spec or "inter_shell" in spec:
+            mode: dict = {}
+            if "intra_shell" in spec:
+                mode["intra_shell"] = dict(spec["intra_shell"])
+            if "inter_shell" in spec:
+                mode["inter_shell"] = dict(spec["inter_shell"])
+            mode_desc = (
+                f"intra={mode.get('intra_shell', {}).get('kind', 'bent_pipe')}"
+                f" inter={mode.get('inter_shell', {}).get('kind', 'bent_pipe')}"
+            )
+        else:
+            mode = {"kind": spec.get("mode", "positive_grid")}
+            if "n" in spec:
+                mode["n"] = spec["n"]
+            if "max_range_km" in spec:
+                mode["max_range_km"] = spec["max_range_km"]
+            mode_desc = f"mode={mode['kind']}" + (f" n={mode['n']}" if "n" in mode else "")
+        edges = isl_mod.build_edges(const, mode)
+        s = isl_mod.summarize_edges(const, edges)
+        lines.append(
+            f"[isl_topology] {mode_desc}"
+            + f"  shells={s['n_shells']} sats={s['n_sats']} edges={s['n_edges']}"
+        )
+        lines.append(
+            f"    per-plane:  intra {s['intra_plane_edges']}, inter {s['inter_plane_edges']}"
+        )
+        if s["n_shells"] > 1:
+            lines.append(
+                f"    per-shell:  intra {s['intra_shell_edges']}, inter {s['inter_shell_edges']}"
+            )
+        lines.append(
+            f"    degree min/mean/max = {s['degree_min']}/{s['degree_mean']:.2f}/{s['degree_max']}"
+            + f"   link km min/mean/max = {s['link_km_min']:.0f}/{s['link_km_mean']:.0f}/{s['link_km_max']:.0f}"
+        )
+        if spec.get("list_edges"):
+            for e in edges[: int(spec.get("list_edges", 0))]:
+                tag = "intra-plane" if e["intra_plane"] else (
+                    "intra-shell" if e.get("intra_shell", True) else "inter-shell")
+                lines.append(f"    {e['a']:>14} -- {e['b']:<14} {e['distance_km']:8.0f} km  ({tag})")
         return lines
 
     # the remaining analyses are per-orbit; run on each SSO/TLE orbit, and on the

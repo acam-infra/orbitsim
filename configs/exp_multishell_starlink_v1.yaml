@@ -1,0 +1,27 @@
+# Runnable experiment: Starlink's five shells (scaled down) with intra-shell
+# +Grid ISL and inter-shell nearest-neighbour links capped by range.
+#
+# sh4 and sh5 share altitude/inclination, so sh5 pairs a RAAN offset with a
+# half-spacing in-plane phase offset to keep t=0 positions distinct — see
+# constellation._build_walker_shell for why RAAN alone is not enough.
+name: exp_multishell_starlink_v1
+
+constellation:
+  shells:
+    - {name: sh1, kind: walker, planes: 8, sats_per_plane: 6,
+       altitude_m: 550e3, inclination_deg: 53.0}
+    - {name: sh2, kind: walker, planes: 8, sats_per_plane: 6,
+       altitude_m: 540e3, inclination_deg: 53.2}
+    - {name: sh3, kind: walker, planes: 4, sats_per_plane: 6,
+       altitude_m: 570e3, inclination_deg: 70.0}
+    - {name: sh4, kind: walker, planes: 4, sats_per_plane: 6,
+       altitude_m: 560e3, inclination_deg: 97.6}
+    - {name: sh5, kind: walker, planes: 4, sats_per_plane: 6,
+       altitude_m: 560e3, inclination_deg: 97.6,
+       raan_offset_deg: 45.0, phase_offset_deg: 30.0}
+
+analysis:
+  - kind: constellation
+  - kind: isl_topology
+    intra_shell: {kind: positive_grid}
+    inter_shell: {kind: n_nearest, n: 2, max_range_km: 3000}

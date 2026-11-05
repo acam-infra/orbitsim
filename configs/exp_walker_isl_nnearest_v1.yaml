@@ -1,0 +1,9 @@
+# Runnable experiment: Walker-delta shell with n=2 nearest-neighbour ISLs.
+name: exp_walker_isl_nnearest_v1
+base: ../input/scenarios/base_walker_starlink_like.yaml
+
+analysis:
+  - kind: isl_topology
+    mode: n_nearest
+    n: 2
+    max_range_km: 6000

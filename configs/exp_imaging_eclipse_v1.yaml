@@ -1,0 +1,7 @@
+# Runnable experiment: 650 km imaging SSO (LTAN 10:30) — eclipsed every day.
+name: exp_imaging_eclipse_v1
+base: ../input/scenarios/base_sso_650km_imaging.yaml
+
+analysis:
+  - kind: orbit_eclipse
+  - kind: year_eclipse

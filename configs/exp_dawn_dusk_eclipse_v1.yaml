@@ -1,0 +1,8 @@
+# Runnable experiment: 650 km dawn–dusk SSO eclipse characterization.
+name: exp_dawn_dusk_eclipse_v1
+base: ../input/scenarios/base_sso_650km_dawn_dusk.yaml
+
+analysis:
+  - kind: orbit_eclipse
+  - kind: year_eclipse
+  - kind: daily_eclipse

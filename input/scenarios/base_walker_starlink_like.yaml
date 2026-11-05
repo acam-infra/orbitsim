@@ -1,0 +1,9 @@
+# Base template: a Starlink-like Walker-delta shell. Not runnable alone.
+name: base_walker_starlink_like
+
+constellation:
+  kind: walker
+  planes: 72
+  sats_per_plane: 22
+  altitude_m: 550000
+  inclination_deg: 53.0

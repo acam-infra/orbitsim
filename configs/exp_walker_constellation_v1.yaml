@@ -1,0 +1,6 @@
+# Runnable experiment: Walker-delta shell constellation-level features.
+name: exp_walker_constellation_v1
+base: ../input/scenarios/base_walker_starlink_like.yaml
+
+analysis:
+  - kind: constellation

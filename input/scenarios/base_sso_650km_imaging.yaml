@@ -1,0 +1,7 @@
+# Base template: 650 km imaging SSO (LTAN 10:30). Not runnable alone.
+name: base_sso_650km_imaging
+
+constellation:
+  kind: sso
+  altitude_m: 650000
+  ltan_h: 10.5

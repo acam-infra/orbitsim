@@ -1,0 +1,8 @@
+# Base template: 650 km dawn–dusk SSO (LTAN 06:00). Not runnable alone —
+# an exp_*.yaml references it via `base:`.
+name: base_sso_650km_dawn_dusk
+
+constellation:
+  kind: sso
+  altitude_m: 650000
+  ltan_h: 6.0

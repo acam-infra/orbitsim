@@ -1,0 +1,10 @@
+# Runnable experiment: dawn–dusk SSO ground access + sun-transit (日凌) window.
+name: exp_dawn_dusk_access_suntransit_v1
+base: ../input/scenarios/base_sso_650km_dawn_dusk.yaml
+
+analysis:
+  - kind: ground_access
+    site_lat_deg: 40.0
+    min_elevation_deg: 10.0
+  - kind: sun_transit
+    thresh_deg: 0.5

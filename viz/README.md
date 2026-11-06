@@ -16,22 +16,46 @@ npm run dev            # 打开 http://localhost:5288/
 
 `?s=<场景名>` 直接打开某个场景，例如 `http://localhost:5288/?s=sow-sso2`。
 
-**协同仿真回放**：`http://localhost:5288/play.html`（`?p=<回放名>&pol=<策略>&t=<秒>`）。
-轨道照旧由闭式解传播，链路只在 orbitsim 接触轨迹标记为在线时出现，链路粗细 / 颜色、迁移箭头、断链与回传来自 satsim 的记录；
-面板对比四种调度策略并画出相对 greedy 的累计达标差。实验与结论见 satsim `docs/notes/cosim_contact_trace.md`。
-
-![协同仿真回放: Walker 53° 4×10 + 3 颗遥感星](docs/play-cosim_coop_w53_v1-contact_aware-t1500.png)
-
 其他命令：
 
 | 命令 | 作用 |
 |---|---|
-| `npm test` | 24 个测试：TS 传播与 Python 参考点逐点对比 (< 1 m)、LTAN / β / 地影弧 / 赤纬 |
+| `npm test` | TS 传播与 Python 参考点逐点对比 (< 1 m)、LTAN / β / 地影弧 / 赤纬及回放辅助函数测试 |
 | `npm run check` | TypeScript 类型检查 |
 | `npm run build` | 打包到 `dist/`，任何静态服务器都能托管 (`npm run preview` 本地看) |
 | `npm run shot -- <url> <输出目录> <场景,场景> [第几天]` | 无头截图；没装 Playwright 浏览器时加 `SHOT_CHANNEL=chrome` |
 
 端口用 `PORT=xxxx npm run dev` 改。
+
+## 协同仿真回放 (`play.html`)
+
+打开 `http://localhost:5288/play.html`（支持 URL 参数 `?p=<回放名>&pol=<策略>&t=<秒>`）。轨道由 orbitsim 闭式解实时计算，星间链路、请求负载、KV 迁移与断链事件来自 satsim 的协同仿真记录，两者共用同一个仿真时钟。实验设计与结论见 satsim `docs/notes/cosim_contact_trace.md`。
+
+![协同仿真回放: Walker 53° 4×10 + 3 颗遥感星](docs/play-cosim_coop_w53_v1-contact_aware-t1500.png)
+
+**视觉元素含义**
+
+| 元素 | 画面表现 | 含义 |
+|---|---|---|
+| 遥感星 (RS) | 白点红框 + 标签 | 发起推理请求，结果必须经星间链路传回同一颗星 |
+| 算力星 | 彩色圆点 | 大小 = 正在解码的请求数；颜色（青→绿→黄→红）= 显存占用；进地影变暗并带灰框（限功 0.35×） |
+| 星间链路 | 青 / 黄 / 红细线 | 青 = 面内（空闲时暗淡）、黄 = 跨面、红 = 遥感→算力；在传数据时变粗变亮橙色 |
+| 事件箭头 | 橙 / 红 / 绿 / 蓝箭头 | 橙色粗箭头 + 移动圆点 = KV 迁移；红圈/红箭头 = 断链或迁移中止；上传（绿）/回传（蓝）默认隐藏，可勾选"显示上传/回传"开启 |
+
+**交互与快捷键**
+
+- `Space`：播放 / 暂停
+- `1`–`4` 或点击策略对比表行：切换四种调度策略（`greedy` / `reactive` / `ephemeris` / `contact_aware`）
+- `←` / `→`：仿真时间退 / 进 60 秒
+- **跳到下一次迁移**：将时钟直接拨到当前时刻之后的下一条 KV 迁移事件
+
+**重新生成回放数据**
+
+```bash
+# 在 satsim 仓库下运行，写出 public/playback/<name>.json 并更新 index.json
+uv run satsim-cosim configs/cosim_coop_w53_v1.yaml --viz ../orbitsim/viz/public/playback
+uv run satsim-cosim configs/cosim_coop_sso2_v1.yaml --viz ../orbitsim/viz/public/playback
+```
 
 ## 页面里有什么
 

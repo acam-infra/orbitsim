@@ -33,6 +33,7 @@ import {
   heat,
   isUp,
   lowerBound,
+  nextMigrationTime,
   type Playback,
   type PlayEvent,
   type PlayFrame,
@@ -40,6 +41,7 @@ import {
   POLICY_COLORS,
   POLICY_NAMES,
   SHOW_S,
+  takeawayFor,
 } from "./playback";
 import { type Scenario, snapshot, subsolarLonDeg, type Vec3 } from "./scenario";
 
@@ -79,11 +81,12 @@ viewer.clock.multiplier = 60;
 viewer.clock.clockRange = ClockRange.LOOP_STOP;
 
 const ui = {
+  takeaway: document.getElementById("takeaway")!,
   playback: document.getElementById("playback") as HTMLSelectElement,
   policy: document.getElementById("policy") as HTMLSelectElement,
-  title: document.getElementById("title")!,
-  desc: document.getElementById("desc")!,
   speed: document.getElementById("speed")!,
+  nextMig: document.getElementById("nextMig") as HTMLButtonElement,
+  showIo: document.getElementById("showIo") as HTMLInputElement,
   live: document.getElementById("live")!,
   table: document.getElementById("table")!,
   chart: document.getElementById("chart") as HTMLCanvasElement,
@@ -100,6 +103,7 @@ interface State {
   rsSet: Set<number>;
   frame: {
     t: number;
+    showIo: boolean;
     ecef: Vec3[];
     lit: boolean[];
     pf: PlayFrame | undefined;
@@ -115,19 +119,31 @@ function cart(p: Vec3): Cartesian3 {
   return new Cartesian3(p[0], p[1], p[2]);
 }
 
+function currentSimSeconds(s: State): number {
+  return Math.max(0, JulianDate.secondsDifference(viewer.clock.currentTime, s.epoch));
+}
+
+function setSimSeconds(s: State, t: number): void {
+  const clamped = Math.max(0, Math.min(s.pb.trace.horizon_s, t));
+  viewer.clock.currentTime = JulianDate.addSeconds(s.epoch, clamped, new JulianDate());
+  refreshPanel(s, clamped);
+}
+
 function frame(s: State, time: JulianDate): State["frame"] {
   const t = Math.max(0, JulianDate.secondsDifference(time, s.epoch));
-  if (t !== s.frame.t) {
+  const showIo = ui.showIo.checked;
+  if (t !== s.frame.t || showIo !== s.frame.showIo) {
     const snap = snapshot(s.sc, t);
     const pf = playFrameAt(s.run, s.pb.frame_s, t);
     s.frame = {
       t,
+      showIo,
       ecef: snap.ecef,
       lit: snap.lit,
       pf,
       rate: new Map((pf?.e ?? []).map(([e, g]) => [e, g])),
       up: s.pb.trace.edges.map((e) => isUp(e.up, t)),
-      events: activeEvents(s.run.events, t, EVENT_POOL),
+      events: activeEvents(s.run.events, t, EVENT_POOL, showIo),
     };
   }
   return s.frame;
@@ -216,15 +232,24 @@ function addLinks(s: State): void {
           const f = frame(s, time);
           return [cart(f.ecef[e.u]!), cart(f.ecef[e.v]!)];
         }, false),
-        width: new CallbackProperty((time) => 1.2 + 6 * util(time), false),
+        width: new CallbackProperty((time) => {
+          const u = util(time);
+          if (u > 0) {
+            return 1.6 + 6 * u;
+          }
+          return e.kind === "intra" ? 0.7 : 1.3;
+        }, false),
         material: new PolylineGlowMaterialProperty({
-          glowPower: new CallbackProperty((time) => 0.12 + 0.3 * util(time), false),
+          glowPower: new CallbackProperty((time) => {
+            const u = util(time);
+            return u > 0 ? 0.14 + 0.3 * u : 0.06;
+          }, false),
           color: new CallbackProperty((time) => {
             const u = util(time);
             if (u > 0) {
               return Color.lerp(base, BUSY, Math.min(1, 0.4 + u), new Color()).withAlpha(0.95);
             }
-            return base.withAlpha(e.kind === "intra" ? 0.28 : 0.55);
+            return base.withAlpha(e.kind === "intra" ? 0.08 : 0.48);
           }, false),
         }),
         arcType: ArcType.NONE,
@@ -268,7 +293,7 @@ function addEventPool(s: State): void {
         }, false),
         width: new CallbackProperty((time) => {
           const ev = evAt(time);
-          return ev && (ev[1] === "mig" || ev[1] === "mig_abort") ? 7 : 3.5;
+          return ev && (ev[1] === "mig" || ev[1] === "mig_abort") ? 8 : 4;
         }, false),
         material: new PolylineArrowMaterialProperty(
           new CallbackProperty((time) => {
@@ -277,7 +302,7 @@ function addEventPool(s: State): void {
               return Color.TRANSPARENT;
             }
             const age = (frame(s, time).t - ev[0]) / (SHOW_S[ev[1]] ?? 1);
-            return (EVENT_COLORS[ev[1]] ?? Color.WHITE).withAlpha(Math.max(0.15, 1 - age * 0.85));
+            return (EVENT_COLORS[ev[1]] ?? Color.WHITE).withAlpha(Math.max(0.2, 1 - age * 0.8));
           }, false),
         ),
         arcType: ArcType.NONE,
@@ -317,7 +342,7 @@ function addEventPool(s: State): void {
         }, false),
         pixelSize: new CallbackProperty((time) => {
           const ev = evAt(time);
-          return ev && ev[1] === "mig" ? 10 : 16;
+          return ev && ev[1] === "mig" ? 11 : 17;
         }, false),
         color: new CallbackProperty((time) => {
           const ev = evAt(time);
@@ -345,20 +370,28 @@ const fmtT = (t: number) => {
 function renderTable(s: State): void {
   const cols: [string, string, (v: number | null) => string][] = [
     ["good_long_frac", "长任务达标", (v) => (v == null ? "-" : `${(v * 100).toFixed(1)}%`)],
-    ["good_frac", "全部达标", (v) => (v == null ? "-" : `${(v * 100).toFixed(1)}%`)],
-    ["lat_long_p90_s", "长任务 p90", (v) => (v == null ? "-" : `${(v / 60).toFixed(1)}m`)],
-    ["dark_tok_share", "影内解码", (v) => (v == null ? "-" : `${(v * 100).toFixed(1)}%`)],
+    ["lat_long_p90_s", "p90", (v) => (v == null ? "-" : `${(v / 60).toFixed(1)}m`)],
     ["migrations", "迁移", (v) => (v == null ? "-" : v.toFixed(0))],
   ];
   let html = "<table><tr><th>策略</th>" + cols.map((c) => `<th>${c[1]}</th>`).join("") + "</tr>";
-  for (const p of s.pb.policies) {
+  s.pb.policies.forEach((p, idx) => {
     const row = s.pb.mean[p] ?? {};
     html +=
-      `<tr class="${p === s.policy ? "cur" : ""}"><td><i class="dot" style="background:${POLICY_COLORS[p] ?? "#fff"}"></i>${POLICY_NAMES[p] ?? p}</td>` +
+      `<tr data-pol="${p}" class="${p === s.policy ? "cur" : ""}" title="快捷键 ${idx + 1}">` +
+      `<td><i class="dot" style="background:${POLICY_COLORS[p] ?? "#fff"}"></i>${POLICY_NAMES[p] ?? p}</td>` +
       cols.map(([k, , f]) => `<td>${f((row[k] as number | null) ?? null)}</td>`).join("") +
       "</tr>";
-  }
+  });
   ui.table.innerHTML = html + "</table>";
+  ui.table.querySelectorAll<HTMLTableRowElement>("tr[data-pol]").forEach((tr) => {
+    tr.addEventListener("click", () => {
+      const pol = tr.dataset.pol;
+      if (pol && pol !== s.policy) {
+        ui.policy.value = pol;
+        void show(ui.playback.value, pol, true);
+      }
+    });
+  });
 }
 
 function drawChart(s: State, t: number): void {
@@ -387,7 +420,7 @@ function drawChart(s: State, t: number): void {
       hi = Math.max(hi, v);
     }
   }
-  const pad = { l: 34, r: 8, t: 8, b: 18 };
+  const pad = { l: 34, r: 8, t: 10, b: 18 };
   const X = (tt: number) => pad.l + ((w - pad.l - pad.r) * tt) / T;
   const Y = (v: number) => pad.t + ((h - pad.t - pad.b) * (hi - v)) / (hi - lo || 1);
   g.strokeStyle = "#334155";
@@ -399,9 +432,10 @@ function drawChart(s: State, t: number): void {
   g.fillStyle = "#94a3b8";
   g.font = "10px sans-serif";
   g.fillText(`+${hi}`, 2, Y(hi) + 8);
-  g.fillText("0", 2, Y(0) + 3);
-  if (lo < 0) {
-    g.fillText(`${lo}`, 2, Y(lo));
+  const y0 = Math.min(h - pad.b - 2, Math.max(pad.t + 18, Y(0) + 3));
+  g.fillText("0", 2, y0);
+  if (lo < 0 && Y(lo) - y0 > 11) {
+    g.fillText(`${lo}`, 2, Math.min(h - pad.b, Y(lo)));
   }
   for (let hh = 0; hh <= T / 3600; hh++) {
     g.fillText(`${hh}h`, X(hh * 3600) - 6, h - 4);
@@ -422,37 +456,27 @@ function drawChart(s: State, t: number): void {
   g.setLineDash([]);
 }
 
-const KIND_TEXT: Record<string, [string, string]> = {
-  mig: ["迁移", "k-mig"],
-  mig_done: ["迁移完成", "k-mig"],
-  mig_abort: ["迁移中止", "k-abort"],
-  cut: ["断链打断传输", "k-cut"],
-  lost: ["结果无法回传", "k-lost"],
-};
-
 function renderTicker(s: State, t: number): void {
   const ev = s.run.events;
   const out: string[] = [];
-  for (let k = lowerBound(ev, t + 1e-9) - 1, n = 0; k >= 0 && out.length < 9 && n < 6000; k--, n++) {
+  const name = (j: unknown) => (typeof j === "number" ? s.names[j] : "?");
+  for (let k = lowerBound(ev, t + 1e-9) - 1, n = 0; k >= 0 && out.length < 6 && n < 6000; k--, n++) {
     const [tt, kind, d] = ev[k]!;
-    const kt = KIND_TEXT[kind];
-    if (!kt) {
-      continue;
-    }
-    const name = (j: unknown) => (typeof j === "number" ? s.names[j] : "?");
-    let what = `请求 #${d.req}`;
     if (kind === "mig") {
-      what += ` ${name(d.src)} → ${name(d.dst)} · ${(d.GB as number).toFixed(2)} GB · ${(d.path as number[]).length - 1} 跳`;
-    } else if (kind === "mig_done" || kind === "mig_abort") {
-      what += ` ${name(d.src)} → ${name(d.dst)}`;
+      const hops = Array.isArray(d.path) ? d.path.length - 1 : 1;
+      out.push(
+        `<li class="k-mig">${fmtT(tt)} 迁移 #${d.req}: ${name(d.src)}→${name(d.dst)} (${(d.GB as number).toFixed(1)}GB, ${hops}跳)</li>`,
+      );
+    } else if (kind === "mig_abort") {
+      out.push(`<li class="k-abort">${fmtT(tt)} 迁移中止 #${d.req}: ${name(d.src)}→${name(d.dst)}</li>`);
     } else if (kind === "cut") {
-      what = `${d.tag === "mig" ? "KV 迁移" : "上传"} · 请求 #${d.req}`;
+      const tag = d.tag === "mig" ? "迁移断链" : "上传断链";
+      out.push(`<li class="k-cut">${fmtT(tt)} ${tag}: 请求 #${d.req} 传输中断</li>`);
     } else if (kind === "lost") {
-      what += ` 在 ${name(d.node)}`;
+      out.push(`<li class="k-lost">${fmtT(tt)} 回传失败: 请求 #${d.req} 滞留 ${name(d.node)}</li>`);
     }
-    out.push(`<li class="${kt[1]}">${fmtT(tt)} ${kt[0]} · ${what}</li>`);
   }
-  ui.ticker.innerHTML = out.join("") || '<li class="note">还没有</li>';
+  ui.ticker.innerHTML = out.join("") || '<li class="note">当前时刻前暂无迁移或断链事件</li>';
 }
 
 function renderLive(s: State, t: number): void {
@@ -460,18 +484,23 @@ function renderLive(s: State, t: number): void {
   const comp = s.sc.satellites.map((_: unknown, i: number) => i).filter((i: number) => !s.rsSet.has(i));
   const decoding = comp.reduce((a: number, i: number) => a + (f.pf?.load[i] ?? 0), 0);
   const dark = comp.filter((i: number) => isDark(s, i, t)).length;
-  const up = f.up.filter(Boolean).length;
-  const migs = f.events.filter((e) => e[1] === "mig").length;
   const good = curveAt(s.run.good_curve, t);
   const cells: [string, string][] = [
     [fmtT(t), "仿真时刻"],
-    [String(decoding), "在解码的请求"],
-    [`${dark}/${comp.length}`, "地影中的算力星"],
-    [String(up), "在线链路"],
-    [String(migs), "近 1 分钟迁移"],
-    [String(good), "累计达标交付"],
+    [String(decoding), "在跑请求"],
+    [`${dark}/${comp.length}`, "地影算力星"],
+    [String(good), "累计达标"],
   ];
   ui.live.innerHTML = cells.map(([v, k]) => `<div><b>${v}</b><span>${k}</span></div>`).join("");
+  const nextMig = nextMigrationTime(s.run.events, t);
+  ui.nextMig.disabled = nextMig === undefined;
+  ui.nextMig.title = nextMig !== undefined ? `跳到 ${fmtT(nextMig)}` : "后续无迁移事件";
+}
+
+function refreshPanel(s: State, t: number): void {
+  renderLive(s, t);
+  renderTicker(s, t);
+  drawChart(s, t);
 }
 
 let lastPanel = 0;
@@ -485,9 +514,7 @@ viewer.clock.onTick.addEventListener((clock) => {
   }
   lastPanel = now;
   const t = Math.max(0, JulianDate.secondsDifference(clock.currentTime, st.epoch));
-  renderLive(st, t);
-  renderTicker(st, t);
-  drawChart(st, t);
+  refreshPanel(st, t);
 });
 
 viewer.selectedEntityChanged.addEventListener((e: Entity | undefined) => {
@@ -548,12 +575,21 @@ async function show(name: string, policy?: string, keepTime = false): Promise<vo
     epoch,
     names: pb.trace.nodes.map((n) => n.name),
     rsSet: new Set(pb.trace.nodes.filter((n) => n.role === "rs").map((n) => n.id)),
-    frame: { t: Number.NaN, ecef: [], lit: [], pf: undefined, rate: new Map(), up: [], events: [] },
+    frame: {
+      t: Number.NaN,
+      showIo: ui.showIo.checked,
+      ecef: [],
+      lit: [],
+      pf: undefined,
+      rate: new Map(),
+      up: [],
+      events: [],
+    },
   };
   st = s;
-  ui.title.textContent = pb.title;
-  ui.desc.textContent = pb.description;
-  ui.policy.innerHTML = pb.policies.map((p) => `<option value="${p}">${POLICY_NAMES[p] ?? p}</option>`).join("");
+  ui.takeaway.textContent = takeawayFor(pb);
+  ui.takeaway.title = pb.description;
+  ui.policy.innerHTML = pb.policies.map((p, idx) => `<option value="${p}">${idx + 1}. ${POLICY_NAMES[p] ?? p}</option>`).join("");
   ui.policy.value = pol;
   addLinks(s);
   addEventPool(s);
@@ -563,6 +599,7 @@ async function show(name: string, policy?: string, keepTime = false): Promise<vo
   viewer.clock.currentTime = JulianDate.addSeconds(epoch, prevT, new JulianDate());
   viewer.timeline.zoomTo(viewer.clock.startTime, viewer.clock.stopTime);
   renderTable(s);
+  refreshPanel(s, prevT);
   if (!keepTime) {
     frameCamera(s);
   }
@@ -573,14 +610,57 @@ async function show(name: string, policy?: string, keepTime = false): Promise<vo
 }
 
 function renderSpeed(): void {
-  ui.speed.innerHTML = "倍速 " + SPEEDS.map((v) => `<button data-v="${v}" class="${viewer.clock.multiplier === v ? "on" : ""}">${v}×</button>`).join("");
-  ui.speed.querySelectorAll("button").forEach((b) =>
+  ui.speed.innerHTML = "倍速 " + SPEEDS.map((v) => `<button data-v="${v}" class="${viewer.clock.multiplier === v ? "on" : ""}">${v}×</button>`).join(" ");
+  ui.speed.querySelectorAll<HTMLButtonElement>("button").forEach((b) =>
     b.addEventListener("click", () => {
       viewer.clock.multiplier = Number(b.dataset.v);
       viewer.clock.shouldAnimate = true;
       renderSpeed();
     }),
   );
+}
+
+function bindControls(): void {
+  ui.nextMig.addEventListener("click", () => {
+    if (!st) {
+      return;
+    }
+    const next = nextMigrationTime(st.run.events, currentSimSeconds(st));
+    if (next !== undefined) {
+      setSimSeconds(st, next);
+    }
+  });
+  ui.showIo.addEventListener("change", () => {
+    if (st) {
+      refreshPanel(st, currentSimSeconds(st));
+    }
+  });
+  window.addEventListener("keydown", (ev) => {
+    const tag = (ev.target as HTMLElement | null)?.tagName;
+    if (tag === "SELECT" || tag === "INPUT" || tag === "TEXTAREA" || ev.metaKey || ev.ctrlKey || ev.altKey) {
+      return;
+    }
+    if (!st) {
+      return;
+    }
+    if (ev.code === "Space") {
+      ev.preventDefault();
+      viewer.clock.shouldAnimate = !viewer.clock.shouldAnimate;
+    } else if (ev.key >= "1" && ev.key <= "4") {
+      const p = st.pb.policies[Number(ev.key) - 1];
+      if (p && p !== st.policy) {
+        ev.preventDefault();
+        ui.policy.value = p;
+        void show(ui.playback.value, p, true);
+      }
+    } else if (ev.key === "ArrowRight") {
+      ev.preventDefault();
+      setSimSeconds(st, currentSimSeconds(st) + 60);
+    } else if (ev.key === "ArrowLeft") {
+      ev.preventDefault();
+      setSimSeconds(st, currentSimSeconds(st) - 60);
+    }
+  });
 }
 
 async function main(): Promise<void> {
@@ -592,11 +672,12 @@ async function main(): Promise<void> {
   ui.playback.addEventListener("change", () => void show(ui.playback.value));
   ui.policy.addEventListener("change", () => void show(ui.playback.value, ui.policy.value, true));
   renderSpeed();
+  bindControls();
   viewer.clock.shouldAnimate = true;
   await show(first, q.get("pol") ?? undefined);
   const t0 = Number(q.get("t"));
   if (st && t0 > 0) {
-    viewer.clock.currentTime = JulianDate.addSeconds(st.epoch, t0, new JulianDate());
+    setSimSeconds(st, t0);
   }
 }
 

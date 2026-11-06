@@ -68,15 +68,19 @@ export function lowerBound(events: PlayEvent[], t: number): number {
   return lo;
 }
 
-/** Events drawn at time t, newest first, at most `cap`. */
-export function activeEvents(events: PlayEvent[], t: number, cap = 120): PlayEvent[] {
+/** Events drawn at time t, newest first, at most `cap`. When `includeIo` is false, upload/deliver are skipped. */
+export function activeEvents(events: PlayEvent[], t: number, cap = 120, includeIo = true): PlayEvent[] {
   const out: PlayEvent[] = [];
   for (let k = lowerBound(events, t + 1e-9) - 1; k >= 0; k--) {
     const ev = events[k]!;
     if (t - ev[0] > MAX_SHOW_S) {
       break;
     }
-    const show = SHOW_S[ev[1]] ?? 0;
+    const kind = ev[1];
+    if (!includeIo && (kind === "upload" || kind === "deliver")) {
+      continue;
+    }
+    const show = SHOW_S[kind] ?? 0;
     if (show > 0 && t - ev[0] <= show) {
       out.push(ev);
       if (out.length >= cap) {
@@ -85,6 +89,34 @@ export function activeEvents(events: PlayEvent[], t: number, cap = 120): PlayEve
     }
   }
   return out;
+}
+
+/** Timestamp of the first `mig` event strictly after `t`, or undefined if none. */
+export function nextMigrationTime(events: PlayEvent[], t: number): number | undefined {
+  for (let k = lowerBound(events, t + 1e-6); k < events.length; k++) {
+    if (events[k]![1] === "mig") {
+      return events[k]![0];
+    }
+  }
+  return undefined;
+}
+
+/** One-sentence takeaway for a playback scenario. */
+export function takeawayFor(pb: Playback): string {
+  const m = pb.mean;
+  const g = m.greedy?.good_long_frac;
+  const e = m.ephemeris?.good_long_frac;
+  const c = m.contact_aware?.good_long_frac;
+  const p90 = m.contact_aware?.lat_long_p90_s ?? m.greedy?.lat_long_p90_s;
+  if (typeof g === "number" && typeof e === "number" && typeof c === "number") {
+    const gain = (c - g) * 100;
+    if (gain >= 2) {
+      return `看点：网格连通星座下，星历放置将长任务达标从 ${(g * 100).toFixed(1)}% 提至 ${(e * 100).toFixed(1)}%，接触感知迁移再补到 ${(c * 100).toFixed(1)}%。`;
+    }
+    const p90Min = typeof p90 === "number" ? `（p90 约 ${(p90 / 60).toFixed(0)}m）` : "";
+    return `看点：簇间断联、同簇齐进地影，长任务达标约 ${(c * 100).toFixed(0)}%${p90Min}，瓶颈在拓扑不在调度。`;
+  }
+  return pb.description;
 }
 
 /** Whether a contact interval list contains t. */

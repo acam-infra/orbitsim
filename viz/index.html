@@ -117,6 +117,32 @@
         border-radius: 4px;
         cursor: pointer;
       }
+      #keyPoints {
+        margin: 6px 0 8px;
+        padding: 6px 8px;
+        list-style: none;
+        background: #11141a;
+        border-left: 3px solid #fde047;
+        border-radius: 4px;
+      }
+      #keyPoints li {
+        margin: 2px 0;
+      }
+      #keyPoints .kp-head {
+        color: #fde047;
+        font-weight: 600;
+      }
+      #keyPoints i {
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        margin-right: 6px;
+        border-radius: 50%;
+        vertical-align: -1px;
+      }
+      .guides .mode {
+        grid-column: 1 / -1;
+      }
       #betaLegend {
         margin: 4px 0 0;
         padding: 0;
@@ -146,6 +172,20 @@
       <div id="title"></div>
       <div id="desc"></div>
       <div id="stats"></div>
+      <label class="mode"
+        >模式
+        <select
+          id="mode"
+          title="简洁: 只留太阳方向/晨昏线/直射点、赤道 0-6-12-18h、每个轨道面一条轨道和它的 LTAN、地影弧. 详细: 全部刻度、交点线、降交点、回归线、全部轨道."
+        >
+          <option value="concise">简洁 (核心要点)</option>
+          <option value="detail">详细 (全部辅助线)</option>
+        </select></label
+      >
+      <ul
+        id="keyPoints"
+        title="每个轨道面: LTAN 决定它相对太阳的朝向, β 决定今天每圈有多久在地影里"
+      ></ul>
       <div class="legend">
         <span><i class="swatch" style="background: #22d3ee"></i>簇内</span>
         <span><i class="swatch" style="background: #facc15"></i>簇间 / 面间</span>
@@ -156,49 +196,84 @@
         <span><i class="dot" style="background: #60a5fa"></i>算力星 (按簇着色)</span>
         <span><i class="dot" style="background: #475569"></i>地影中</span>
       </div>
-      <label><input id="showOrbits" type="checkbox" checked /> 轨道</label>
-      <label><input id="showLabels" type="checkbox" /> 星名</label>
-      <label title="相机随惯性系转动: 轨道面不动, 地球在下面转"><input id="inertial" type="checkbox" /> 惯性视角</label>
-      <div class="guides">
-        <b>辅助线</b>
-        <label title="经线上的地方时 = 太阳在那里的时角. 地球自西向东转过这些线, 线本身相对太阳不动"><input id="showLocalTime" type="checkbox" checked /> 地方时经线</label>
-        <label title="黄色大圆 = 晨昏线 (白天/黑夜分界), 箭头指向太阳"><input id="showSun" type="checkbox" checked /> 太阳 & 晨昏线</label>
-        <label title="圆圈 = 每个轨道面的升交点 (卫星由南向北穿过赤道的位置), 标签是它的地方时 LTAN 和 β 角"><input id="showPlanes" type="checkbox" checked /> 升交点 LTAN</label>
-        <label title="每条轨道上被地球挡住阳光的那一段 (圆柱地影)"><input id="showShadow" type="checkbox" checked /> 地影弧段</label>
-        <label title="白色赤道环 + 0-23h 地方时刻度 (跟着太阳, 不跟地球); 实心辐条连到升交点, 空心圈是降交点, 虚线是交点线"
-          ><input id="showEquator" type="checkbox" checked /> 赤道 & 交点</label
-        >
-        <label title="黄点 = 太阳直射点 (当地正午, 纬度 = 太阳赤纬); 黄虚线 = 它今天走的纬线; 橙线 = 南北回归线"
-          ><input id="showSubsolar" type="checkbox" checked /> 太阳直射点</label
-        >
-      </div>
       <div class="season">
         <b>季节 (太阳直射点)</b>
         <div id="dayLabel"></div>
         <input id="day" type="range" min="0" max="364" step="1" value="81" />
         <div id="dayPresets"></div>
-        <canvas id="betaChart" title="各轨道面 β 角全年变化; 黄色带 = 不进地影; 竖虚线 = 当前日期"></canvas>
+        <canvas
+          id="betaChart"
+          title="各轨道面 β 角全年变化; 黄色带 = 不进地影; 竖虚线 = 当前日期"
+        ></canvas>
         <ul id="betaLegend"></ul>
       </div>
+      <details class="layers">
+        <summary>图层与明细</summary>
+        <label><input id="showOrbits" type="checkbox" checked /> 轨道</label>
+        <label><input id="showLabels" type="checkbox" /> 星名</label>
+        <label title="相机随惯性系转动: 轨道面不动, 地球在下面转"
+          ><input id="inertial" type="checkbox" /> 惯性视角</label
+        >
+        <div class="guides">
+          <label
+            title="经线上的地方时 = 太阳在那里的时角. 地球自西向东转过这些线, 线本身相对太阳不动"
+            ><input id="showLocalTime" type="checkbox" checked /> 地方时经线</label
+          >
+          <label title="黄色大圆 = 晨昏线 (白天/黑夜分界), 箭头指向太阳"
+            ><input id="showSun" type="checkbox" checked /> 太阳 & 晨昏线</label
+          >
+          <label
+            title="圆圈 = 每个轨道面的升交点 (卫星由南向北穿过赤道的位置), 标签是它的地方时 LTAN 和 β 角"
+            ><input id="showPlanes" type="checkbox" checked /> 升交点 LTAN</label
+          >
+          <label title="每条轨道上被地球挡住阳光的那一段 (圆柱地影)"
+            ><input id="showShadow" type="checkbox" checked /> 地影弧段</label
+          >
+          <label
+            title="白色赤道环 + 0-23h 地方时刻度 (跟着太阳, 不跟地球); 实心辐条连到升交点, 空心圈是降交点, 虚线是交点线"
+            ><input id="showEquator" type="checkbox" checked /> 赤道 & 交点</label
+          >
+          <label
+            title="黄点 = 太阳直射点 (当地正午, 纬度 = 太阳赤纬); 黄虚线 = 它今天走的纬线; 橙线 = 南北回归线"
+            ><input id="showSubsolar" type="checkbox" checked /> 太阳直射点</label
+          >
+        </div>
+        <div id="planeTable"></div>
+      </details>
       <details>
         <summary>LTAN 是什么, 影响什么</summary>
-        <p>轨道面是一个穿过地心的大圆, 它和<b>赤道</b>有两个交点: 卫星<b>由南向北</b>穿过赤道的叫<b>升交点</b>, 由北向南的叫<b>降交点</b>, 两点在地球两侧, 连线叫<b>交点线</b>.</p>
         <p>
-          <b>LTAN</b> (升交点地方时) = 升交点那里的当地太阳时. 看图: 赤道环上有 0-23h 的地方时刻度 (12h 永远在太阳正下方), 从刻度伸出的实心辐条指到升交点, 刻度读数就是 LTAN;
-          降交点刚好差 12 h. 太阳同步轨道 (SSO) 的轨道面每天转 ≈0.986°, 跟着太阳走, 所以 LTAN 全年基本不变, 等于轨道面相对太阳的<b>固定朝向</b>.
+          轨道面是一个穿过地心的大圆, 它和<b>赤道</b>有两个交点:
+          卫星<b>由南向北</b>穿过赤道的叫<b>升交点</b>, 由北向南的叫<b>降交点</b>, 两点在地球两侧,
+          连线叫<b>交点线</b>.
+        </p>
+        <p>
+          <b>LTAN</b> (升交点地方时) = 升交点那里的当地太阳时. 看图: 赤道环上有 0-23h 的地方时刻度
+          (12h 永远在太阳正下方), 从刻度伸出的实心辐条指到升交点, 刻度读数就是 LTAN; 降交点刚好差 12
+          h. 太阳同步轨道 (SSO) 的轨道面每天转 ≈0.986°, 跟着太阳走, 所以 LTAN 全年基本不变,
+          等于轨道面相对太阳的<b>固定朝向</b>.
         </p>
         <ul>
-          <li><b>06:00 / 18:00 晨昏轨道</b>: 轨道面贴着晨昏线, 侧对太阳 (β 大), 几乎不进地影 → 能源最好; 但星下点总在晨昏, 光学成像太阳太低.</li>
-          <li><b>10:30 / 13:30 上午/下午星</b>: 过境时地面光照好, 适合光学遥感; 轨道面斜对太阳, 每圈约 35 min 在地影里.</li>
+          <li>
+            <b>06:00 / 18:00 晨昏轨道</b>: 轨道面贴着晨昏线, 侧对太阳 (β 大), 几乎不进地影 →
+            能源最好; 但星下点总在晨昏, 光学成像太阳太低.
+          </li>
+          <li>
+            <b>10:30 / 13:30 上午/下午星</b>: 过境时地面光照好, 适合光学遥感; 轨道面斜对太阳, 每圈约
+            35 min 在地影里.
+          </li>
           <li><b>12:00 / 00:00</b>: 轨道面正对太阳 (β≈0), 地影最长.</li>
         </ul>
-        <p>β 角 = 太阳方向与轨道面的夹角. |β| 越大地影越短, 超过约 66° (550 km) 就完全不进影. 看图: 升交点圆圈落在哪条地方时经线附近, LTAN 就是几点.</p>
         <p>
-          <b>太阳直射点</b>一年在南北回归线 (±23.44°) 之间来回. 拖动下面的日期滑块: 直射点纬度变了, 轨道面 LTAN 不变, 但 β 角会跟着季节变, 所以同一条轨道冬夏的地影长度不同.
-          晨昏轨道的 β 在至点附近最小, 地影季就出在至点前后.
+          β 角 = 太阳方向与轨道面的夹角. |β| 越大地影越短, 超过约 66° (550 km) 就完全不进影. 看图:
+          升交点圆圈落在哪条地方时经线附近, LTAN 就是几点.
+        </p>
+        <p>
+          <b>太阳直射点</b>一年在南北回归线 (±23.44°) 之间来回. 拖动下面的日期滑块: 直射点纬度变了,
+          轨道面 LTAN 不变, 但 β 角会跟着季节变, 所以同一条轨道冬夏的地影长度不同. 晨昏轨道的 β
+          在至点附近最小, 地影季就出在至点前后.
         </p>
       </details>
-      <div id="planeTable"></div>
     </div>
     <script type="module" src="/src/main.ts"></script>
   </body>

@@ -18,5 +18,16 @@
    "ephemeris",
    "contact_aware"
   ]
+ },
+ {
+  "name": "cosim_typhoon_agentic_v1",
+  "title": "台风应急 · 3 颗遥感星提交长时推理会话, Walker 53° 4×10 算力星座服务",
+  "policies": [
+   "greedy",
+   "reactive",
+   "ephemeris",
+   "contact_aware_v1",
+   "contact_aware"
+  ]
  }
 ]

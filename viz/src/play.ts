@@ -646,7 +646,7 @@ function bindControls(): void {
     if (ev.code === "Space") {
       ev.preventDefault();
       viewer.clock.shouldAnimate = !viewer.clock.shouldAnimate;
-    } else if (ev.key >= "1" && ev.key <= "4") {
+    } else if (ev.key >= "1" && ev.key <= "9") {
       const p = st.pb.policies[Number(ev.key) - 1];
       if (p && p !== st.policy) {
         ev.preventDefault();

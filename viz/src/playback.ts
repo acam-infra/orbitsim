@@ -30,6 +30,7 @@ export interface Playback {
   name: string;
   title: string;
   description: string;
+  takeaway?: string;
   delivery: string;
   frame_s: number;
   link_gbps: Record<string, number>;
@@ -101,8 +102,11 @@ export function nextMigrationTime(events: PlayEvent[], t: number): number | unde
   return undefined;
 }
 
-/** One-sentence takeaway for a playback scenario. */
+/** One-sentence takeaway for a playback scenario (the experiment config may supply its own). */
 export function takeawayFor(pb: Playback): string {
+  if (pb.takeaway) {
+    return `看点：${pb.takeaway}`;
+  }
   const m = pb.mean;
   const g = m.greedy?.good_long_frac;
   const e = m.ephemeris?.good_long_frac;
@@ -182,6 +186,7 @@ export const POLICY_NAMES: Record<string, string> = {
   reactive: "反应式迁移 (进影就搬)",
   ephemeris: "星历放置 (不迁移)",
   contact_aware: "星历放置 + 接触感知迁移",
+  contact_aware_v1: "接触感知迁移 v1 (只算自己)",
 };
 
 export const POLICY_COLORS: Record<string, string> = {
@@ -189,4 +194,5 @@ export const POLICY_COLORS: Record<string, string> = {
   reactive: "#f59e0b",
   ephemeris: "#60a5fa",
   contact_aware: "#34d399",
+  contact_aware_v1: "#c084fc",
 };

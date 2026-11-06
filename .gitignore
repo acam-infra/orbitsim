@@ -1,9 +1,19 @@
+# Python
 .venv/
 __pycache__/
 *.pyc
 *.egg-info/
+.pytest_cache/
 dist/
 build/
 out/
-.pytest_cache/
+
+# export_cosim.py default target; the copies that matter live in satsim/input/traces
 cosim_out/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp

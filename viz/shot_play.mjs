@@ -1,9 +1,9 @@
 // Screenshots of the co-simulation playback at given simulated times, plus page errors.
-//   node shot_play.mjs [base-url] [out-dir] [playback] [policy] [t1,t2,...]
+//   node shot_play.mjs [base-url] [out-dir=shots] [playback] [policy] [t1,t2,...]
 import { chromium } from "@playwright/test";
 
 const base = process.argv[2] ?? "http://localhost:5288";
-const out = process.argv[3] ?? ".";
+const out = process.argv[3] ?? "shots";
 const name = process.argv[4] ?? "cosim_coop_w53_v1";
 const policy = process.argv[5] ?? "contact_aware";
 const times = (process.argv[6] ?? "1800").split(",").map(Number);

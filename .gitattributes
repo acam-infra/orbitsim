@@ -1,0 +1,13 @@
+# Line endings: LF in the repo and the working tree on every OS (overrides core.autocrlf).
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.pyd binary
+
+# Generated data: kept in git so the viewer works from a clone, but never shown as text diffs
+# or counted as source. Regenerate with satcosim `python cosim.py run|trace`.
+viz/public/playback/*.json -diff linguist-generated
+viz/public/scenarios/*.json -diff linguist-generated
+research_out/*.csv linguist-generated
+viz/package-lock.json -diff linguist-generated
+uv.lock -diff linguist-generated

@@ -77,12 +77,29 @@ constellation:
 | `ground_access` | daily access minutes for a `site_lat_deg` / `min_elevation_deg` |
 | `sun_transit`   | days of year prone to sun-transit outages (`thresh_deg`) |
 
+## 3-D viewer
+
+`viz/` draws any scenario on the globe: orbits, satellites, inter-satellite links, and guides for
+local time, the equator and nodes (how to read LTAN), the terminator, the umbra arcs and the
+subsolar point, with a day-of-year slider and a β-over-year chart. See [viz/README.md](viz/README.md).
+
+```bash
+cd viz && npm install && npm run export && npm run dev   # http://localhost:5288/
+```
+
+Your own constellation: build records with `fleet_synth` and call
+`export_viz.export_scenario(name, title, sats, links=..., doy=...)`, then refresh the page.
+
 ## Layout
 
 ```
 input/scenarios/   base_* templates
 configs/           exp_* runnable experiments
-src/orbitsim/      orbit_sun.py · constellation.py · visibility.py · report.py
+src/orbitsim/      orbit_sun.py · constellation.py · visibility.py · fleet_energy.py ·
+                   shadow_escape.py · fleet_synth.py · isl.py · report.py
+research_*.py      research scans; outputs and findings in research_out/
+export_viz.py      scenarios -> viz/public/scenarios/*.json
+viz/               3-D viewer (CesiumJS, TypeScript)
 tests/             pytest against known LEO numbers
 docs/              notes
 ```

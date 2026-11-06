@@ -1,4 +1,4 @@
-"""Export orbitsim scenarios as JSON for the satvis 3-D viewer (constellation.html).
+"""Export orbitsim scenarios as JSON for the 3-D viewer in ``viz/`` (see viz/README.md).
 
 The viewer re-propagates with the same closed form as ``fleet_synth``:
   RAAN(t) = raan0 + rate·t,  u(t) = u0 + n·t,  ECEF = Rz(−θ_G)·ECI,
@@ -6,7 +6,14 @@ The viewer re-propagates with the same closed form as ``fleet_synth``:
 and the same mean-Sun umbra test. ``check`` carries reference ECEF positions and lit flags
 so the viewer's test suite can hold the TypeScript port to this file.
 
-Usage: .venv/Scripts/python.exe export_satvis.py <satvis checkout>/public/scenarios
+Usage:
+  uv run python export_viz.py                 # built-in scenarios -> viz/public/scenarios
+  uv run python export_viz.py <dir>           # somewhere else
+
+From your own script (any list of ``fleet_synth.make_sat`` / ``walker`` / ``sso_plane`` records):
+
+  from export_viz import export_scenario
+  export_scenario("my-case", "标题", sats, links=[["a", "b", "inter"]], doy=172)
 """
 from __future__ import annotations
 
@@ -156,17 +163,59 @@ def synth_scenarios(doy=81.0):
     return out
 
 
-def main():
-    dst = sys.argv[1] if len(sys.argv) > 1 else os.path.join(os.path.dirname(__file__), "research_out", "satvis")
+DEFAULT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "viz", "public", "scenarios")
+
+
+def write_scenario(sc: dict, dst: str = DEFAULT_DIR) -> str:
+    """Write one scenario JSON and add (or replace) its entry in ``index.json``."""
     os.makedirs(dst, exist_ok=True)
+    path = os.path.join(dst, f"{sc['name']}.json")
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(sc, f, ensure_ascii=False, indent=1)
+    idx_path = os.path.join(dst, "index.json")
     index = []
-    for sc in sow_scenarios() + synth_scenarios():
-        with open(os.path.join(dst, f"{sc['name']}.json"), "w", encoding="utf-8") as f:
-            json.dump(sc, f, ensure_ascii=False, indent=1)
-        index.append({"name": sc["name"], "title": sc["title"], "satellites": len(sc["satellites"])})
-        print(f"{sc['name']:>16}: {len(sc['satellites'])} sats, {len(sc['links']['static'])} static links")
-    with open(os.path.join(dst, "index.json"), "w", encoding="utf-8") as f:
+    if os.path.exists(idx_path):
+        with open(idx_path, encoding="utf-8") as f:
+            index = [e for e in json.load(f) if e["name"] != sc["name"]]
+    index.append({"name": sc["name"], "title": sc["title"], "satellites": len(sc["satellites"])})
+    with open(idx_path, "w", encoding="utf-8") as f:
         json.dump(index, f, ensure_ascii=False, indent=1)
+    return path
+
+
+def export_scenario(name: str, title: str, sats: list[dict], *, links=None, dynamic=None,
+                    doy: float = 81.0, description: str = "", stations: bool = True,
+                    duration_h: float = 6, dst: str = DEFAULT_DIR) -> str:
+    """Export ``fleet_synth`` satellite records as a viewer scenario; returns the JSON path.
+
+    ``sats``      records from ``fleet_synth.make_sat`` / ``walker`` / ``sso_plane``. A record's
+                  ``cluster`` key (else its ``plane``) sets its colour; ``role="rs"`` draws it as a
+                  remote-sensing satellite.
+    ``links``     static links ``[[name_a, name_b, kind], ...]``; kind is ``intra`` (cyan),
+                  ``inter`` (yellow) or ``rs`` (red).
+    ``dynamic``   link rules re-evaluated every frame, e.g.
+                  ``{"a": "rs", "b": "compute", "kind": "rs", "max_range_m": 4e6,
+                  "grazing_m": 8e4, "nearest_only": True, "require_lit_b": True}``;
+                  ``a`` / ``b`` name groups (a record's ``group`` key, else its ``role``).
+    ``doy``       day of year the scenario opens on (0 = 1 Jan); the viewer's slider moves it.
+    """
+    members = []
+    for s in sats:
+        cluster = str(s.get("cluster", s.get("plane", s["role"])))
+        members.append((s.get("group", s["role"]), cluster, s))
+    groups: dict[str, list] = {}
+    for g, c, s in members:
+        groups.setdefault(g, []).append((c, [s]))
+    sc = scenario(name, title, description, doy, list(groups.items()), links or [], dynamic or [],
+                  stations=stations, duration_h=duration_h)
+    return write_scenario(sc, dst)
+
+
+def main():
+    dst = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_DIR
+    for sc in sow_scenarios() + synth_scenarios():
+        write_scenario(sc, dst)
+        print(f"{sc['name']:>16}: {len(sc['satellites'])} sats, {len(sc['links']['static'])} static links")
     print(f"-> {dst}")
 
 

@@ -1,0 +1,37 @@
+[
+ {
+  "name": "sow-sso4",
+  "title": "SOW · S-SSO4 四个 SSO 面各 1 簇",
+  "satellites": 16
+ },
+ {
+  "name": "sow-sso2",
+  "title": "SOW · S-SSO2 两个 SSO 面、每面两簇 (相隔 180°)",
+  "satellites": 16
+ },
+ {
+  "name": "sow-w53",
+  "title": "SOW · S-W53 四个 53° 面各 1 簇",
+  "satellites": 16
+ },
+ {
+  "name": "sow-relay",
+  "title": "SOW · 同面接力: 一个 SSO 面每 40° 一簇 (9 簇 × 2 星)",
+  "satellites": 18
+ },
+ {
+  "name": "synth-w53",
+  "title": "合成 · 3 颗遥感星 + Walker 53° 6×8 算力星座",
+  "satellites": 51
+ },
+ {
+  "name": "synth-dawn-dusk",
+  "title": "合成 · 3 颗遥感星 + 晨昏面 12 星",
+  "satellites": 15
+ },
+ {
+  "name": "synth-coplanar",
+  "title": "合成 · 3 颗遥感星 + 与 RS-1030 同面伴飞 6 星",
+  "satellites": 9
+ }
+]

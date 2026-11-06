@@ -1,0 +1,27 @@
+{
+  "name": "orbitsim-viz",
+  "version": "0.1.0",
+  "private": true,
+  "description": "3-D viewer for orbitsim scenarios: orbits, inter-satellite links, local-time and Sun guides (CesiumJS).",
+  "type": "module",
+  "scripts": {
+    "export": "cd .. && uv run python export_satvis.py viz/public/scenarios",
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "check": "tsc --noEmit",
+    "shot": "node shot.mjs"
+  },
+  "dependencies": {
+    "cesium": "1.147.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.65.0",
+    "@types/node": "^26.6.6",
+    "typescript": "^6.0.3",
+    "vite": "^8.3.5",
+    "vite-plugin-static-copy": "^4.1.1",
+    "vitest": "^5.1.0"
+  }
+}

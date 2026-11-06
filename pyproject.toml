@@ -25,3 +25,7 @@ dev = [
 research = [
     "matplotlib>=3.8",
 ]
+
+[tool.pytest.ini_options]
+# tests import the root-level export scripts (export_viz, export_cosim)
+pythonpath = ["."]

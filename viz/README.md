@@ -16,6 +16,12 @@ npm run dev            # 打开 http://localhost:5288/
 
 `?s=<场景名>` 直接打开某个场景，例如 `http://localhost:5288/?s=sow-sso2`。
 
+**协同仿真回放**：`http://localhost:5288/play.html`（`?p=<回放名>&pol=<策略>&t=<秒>`）。
+轨道照旧由闭式解传播，链路只在 orbitsim 接触轨迹标记为在线时出现，链路粗细 / 颜色、迁移箭头、断链与回传来自 satsim 的记录；
+面板对比四种调度策略并画出相对 greedy 的累计达标差。实验与结论见 satsim `docs/notes/cosim_contact_trace.md`。
+
+![协同仿真回放: Walker 53° 4×10 + 3 颗遥感星](docs/play-cosim_coop_w53_v1-contact_aware-t1500.png)
+
 其他命令：
 
 | 命令 | 作用 |
@@ -141,6 +147,9 @@ export_scenario(
 
 | 文件 | 内容 |
 |---|---|
+| `play.html` / `src/play.ts` | **协同仿真回放**：satsim 按 orbitsim 接触轨迹跑出的网络事件（链路负载、上传、KV 迁移、断链、结果回传）叠在同一时钟的星座上；`src/playback.ts` 是不依赖 Cesium 的部分 |
+| `public/playback/` | 回放 JSON，由 satsim `satsim-cosim <config> --viz ../orbitsim/viz/public/playback` 生成 |
+| `shot_play.mjs` | 回放页无头截图：`node shot_play.mjs <url> <目录> <回放名> <策略> <t1,t2>` |
 | `index.html` | 页面和面板 |
 | `src/main.ts` | Cesium 绘制：卫星、链路、辅助线、季节滑块、β 图 |
 | `src/scenario.ts` | 传播、地影、视线、LTAN / β、地方时、太阳直射点（无 Cesium，可单测） |

@@ -1,0 +1,22 @@
+[
+ {
+  "name": "cosim_coop_w53_v1",
+  "title": "协同仿真 · Walker 53° 4×10 算力星座服务 3 颗遥感星 (结果回传)",
+  "policies": [
+   "greedy",
+   "reactive",
+   "ephemeris",
+   "contact_aware"
+  ]
+ },
+ {
+  "name": "cosim_coop_sso2_v1",
+  "title": "协同仿真 · SOW S-SSO2 (4 簇 × 4 星, 簇间不连通) 服务 3 颗遥感星",
+  "policies": [
+   "greedy",
+   "reactive",
+   "ephemeris",
+   "contact_aware"
+  ]
+ }
+]

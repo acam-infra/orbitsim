@@ -6,3 +6,4 @@ dist/
 build/
 out/
 .pytest_cache/
+cosim_out/

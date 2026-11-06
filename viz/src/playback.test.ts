@@ -1,0 +1,54 @@
+import { describe, expect, it } from "vitest";
+
+import { activeEvents, curveAt, heat, isUp, lowerBound, type PlayEvent, SHOW_S } from "./playback";
+
+const ev: PlayEvent[] = [
+  [10, "upload", { path: [0, 3] }],
+  [20, "mig", { src: 3, dst: 4, path: [3, 4] }],
+  [25, "deliver", { path: [4, 0] }],
+  [100, "cut", { tag: "mig" }],
+];
+
+describe("playback helpers", () => {
+  it("finds the first event at or after t", () => {
+    expect(lowerBound(ev, 0)).toBe(0);
+    expect(lowerBound(ev, 20)).toBe(1);
+    expect(lowerBound(ev, 21)).toBe(2);
+    expect(lowerBound(ev, 1000)).toBe(4);
+  });
+
+  it("keeps each event drawn for its kind's window, newest first", () => {
+    expect(activeEvents(ev, 15).map((e) => e[1])).toEqual(["upload"]);
+    expect(activeEvents(ev, 30).map((e) => e[1])).toEqual(["deliver", "mig"]);
+    expect(activeEvents(ev, 20 + SHOW_S.mig! + 1).map((e) => e[1])).toEqual([]);
+    expect(activeEvents(ev, 120).map((e) => e[1])).toEqual(["cut"]);
+  });
+
+  it("reads contact intervals as half-open", () => {
+    const up: [number, number][] = [
+      [0, 10],
+      [20, 30],
+    ];
+    expect(isUp(up, 0)).toBe(true);
+    expect(isUp(up, 10)).toBe(false);
+    expect(isUp(up, 25)).toBe(true);
+    expect(isUp(up, 30)).toBe(false);
+    expect(isUp([], 5)).toBe(false);
+  });
+
+  it("steps a cumulative curve", () => {
+    const c: [number, number][] = [
+      [0, 0],
+      [30, 2],
+      [60, 5],
+    ];
+    expect(curveAt(c, 45)).toBe(2);
+    expect(curveAt(c, 60)).toBe(5);
+  });
+
+  it("maps fill to a heat colour from teal to red", () => {
+    expect(heat(0)).toEqual([45, 212, 191]);
+    expect(heat(1)).toEqual([239, 68, 68]);
+    expect(heat(2)).toEqual([239, 68, 68]);
+  });
+});
